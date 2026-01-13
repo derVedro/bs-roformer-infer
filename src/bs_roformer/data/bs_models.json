@@ -28,7 +28,7 @@
       "name": "Roformer Model: BS Roformer SW by jarredou",
       "checkpoint": "BS-Rofo-SW-Fixed.ckpt",
       "config": "BS-Rofo-SW-Fixed.yaml",
-      "category": "vocals"
+      "category": "multi-stem"
     },
     "roformer-model-bs-roformer-vocals-by-gabox": {
       "name": "Roformer Model: BS Roformer | Vocals by Gabox",
