@@ -19,6 +19,19 @@ from tqdm import tqdm
 from .utils import demix_track, get_model_from_config
 
 
+class SafeLoaderWithTuple(yaml.SafeLoader):
+    """YAML loader that treats !!python/tuple as a list (which utils.py converts to tuple)."""
+    pass
+
+
+def _tuple_constructor(loader, node):
+    """Convert !!python/tuple to a list; utils.py will convert to tuple later."""
+    return loader.construct_sequence(node)
+
+
+SafeLoaderWithTuple.add_constructor('tag:yaml.org,2002:python/tuple', _tuple_constructor)
+
+
 def _ensure_wav_inputs(input_folder: Path) -> list[Path]:
     if not input_folder.exists():
         raise FileNotFoundError(f"Input folder not found: {input_folder}")
@@ -119,7 +132,7 @@ def proc_folder(args):
     torch.backends.cudnn.benchmark = True
 
     with open(args.config_path) as f:
-        config = ConfigDict(yaml.safe_load(f))
+        config = ConfigDict(yaml.load(f, Loader=SafeLoaderWithTuple))
 
     model = get_model_from_config(args.model_type, config)
     print(f"Using model weights: {args.model_path}")

@@ -8,7 +8,28 @@ import torch.nn as nn
 def get_model_from_config(model_type, config):
     if model_type == 'bs_roformer':
         from . import BSRoformer
-        model = BSRoformer(**dict(config.model))
+        model_config = dict(config.model)
+
+        # Convert list to tuple for parameters that require tuple type hints
+        tuple_params = ['multi_stft_resolutions_window_sizes', 'freqs_per_bands']
+        for param in tuple_params:
+            if param in model_config and isinstance(model_config[param], list):
+                model_config[param] = tuple(model_config[param])
+
+        # Filter out parameters not accepted by BSRoformer
+        valid_params = {
+            'dim', 'depth', 'stereo', 'num_stems', 'time_transformer_depth',
+            'freq_transformer_depth', 'freqs_per_bands', 'freq_range', 'dim_head',
+            'heads', 'attn_dropout', 'ff_dropout', 'flash_attn', 'num_residual_streams',
+            'num_residual_fracs', 'dim_freqs_in', 'stft_n_fft', 'stft_hop_length',
+            'stft_win_length', 'stft_normalized', 'zero_dc', 'stft_window_fn',
+            'mask_estimator_depth', 'multi_stft_resolution_loss_weight',
+            'multi_stft_resolutions_window_sizes', 'multi_stft_hop_size',
+            'multi_stft_normalized', 'multi_stft_window_fn'
+        }
+        model_config = {k: v for k, v in model_config.items() if k in valid_params}
+
+        model = BSRoformer(**model_config)
     else:
         print('Unknown model: {}'.format(model_type))
         model = None
@@ -25,7 +46,13 @@ def get_windowing_array(window_size, fade_size, device):
     return window.to(device)
 
 def demix_track(config, model, mix, device, first_chunk_time=None):
-    C = config.inference.chunk_size
+    # chunk_size can be in inference or audio section depending on config version
+    if hasattr(config.inference, 'chunk_size'):
+        C = config.inference.chunk_size
+    elif hasattr(config, 'audio') and hasattr(config.audio, 'chunk_size'):
+        C = config.audio.chunk_size
+    else:
+        C = 588800  # default chunk size
     N = config.inference.num_overlap
     step = C // N
     fade_size = C // 10

@@ -68,7 +68,7 @@ class ModelRegistry:
             return self._models[self._by_checkpoint[normalized]]
         raise KeyError(f"Unknown BS-Roformer model: {key}")
 
-    def search(self, term: str) -> List[MelBandModel]:
+    def search(self, term: str) -> List[BSModel]:
         normalized = term.lower()
         return [
             m for m in self._models.values()
