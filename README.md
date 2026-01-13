@@ -4,22 +4,30 @@
 
 BS-RoFormer-Infer provides a clean, lightweight API for running music source separation inference using Band-Split RoFormer models with automatic checkpoint management.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/10T_mrUr39pT29knUZ9rKQ9i3P57uwkXW?usp=sharing)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/bs-roformer-infer)](https://pypi.org/project/bs-roformer-infer/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/10T_mrUr39pT29knUZ9rKQ9i3P57uwkXW?usp=sharing)
 
 ---
 
 ## Features
 
 - **Inference Only**: Lightweight package focused on production inference
-- **Auto-Download**: Automatic checkpoint downloads with hash verification
-- **10 Pre-trained Models**: Vocals, instrumentals, and multi-stem separation
+- **Auto-Download**: Automatic checkpoint downloads with integrity verification
+- **10+ Pre-trained Models**: Vocals, instrumentals, dereverb, and multi-stem separation
 - **CLI Tools**: `bs-roformer-infer` and `bs-roformer-download` commands
 - **Python API**: Clean programmatic interface
-- **Model Registry**: Easy model discovery and management
+- **Model Registry**: Easy model discovery with search and category filtering
+
+---
+
+## Try it in Colab
+
+No installation needed! Try the demo directly in Google Colab:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/10T_mrUr39pT29knUZ9rKQ9i3P57uwkXW?usp=sharing)
 
 ---
 
@@ -44,6 +52,9 @@ bs-roformer-download --list-models
 # Download the recommended model (BS-RoFormer-SW)
 bs-roformer-download --model roformer-model-bs-roformer-sw-by-jarredou
 
+# Download by category
+bs-roformer-download --category vocals --output-dir ./models
+
 # Download all models
 bs-roformer-download --all --output-dir ./models
 ```
@@ -59,6 +70,8 @@ bs-roformer-infer \
   --store_dir ./outputs
 ```
 
+Every WAV inside `input_folder` produces separated stems (vocals, drums, bass, guitar, piano, other) plus `*_instrumental.wav`.
+
 ### Python API
 
 ```python
@@ -67,22 +80,23 @@ from ml_collections import ConfigDict
 import torch
 import yaml
 from bs_roformer import MODEL_REGISTRY, DEFAULT_MODEL, get_model_from_config
+from bs_roformer.inference import SafeLoaderWithTuple
 
 # Use the default recommended model (BS-RoFormer-SW)
 entry = MODEL_REGISTRY.get(DEFAULT_MODEL)
 
 # Load config and model
-config = ConfigDict(yaml.safe_load(open(f"models/{entry.slug}/{entry.config}")))
+with open(f"models/{entry.slug}/{entry.config}") as f:
+    config = ConfigDict(yaml.load(f, Loader=SafeLoaderWithTuple))
 model = get_model_from_config("bs_roformer", config)
-state_dict = torch.load(f"models/{entry.slug}/{entry.checkpoint}", map_location="cpu")
-model.load_state_dict(state_dict)
+model.load_state_dict(torch.load(f"models/{entry.slug}/{entry.checkpoint}", map_location="cpu"))
 ```
 
 ---
 
 ## Recommended Model
 
-**BS-RoFormer-SW** (`roformer-model-bs-roformer-sw-by-jarredou`) is the recommended default model for audio source separation. It supports **6-stem separation** (vocals, drums, bass, guitar, piano, other) and provides excellent quality for production workflows.
+**BS-RoFormer-SW** (`roformer-model-bs-roformer-sw-by-jarredou`) by jarredou is the recommended default model for audio source separation. It supports **6-stem separation** (vocals, drums, bass, guitar, piano, other) and provides excellent quality for production workflows.
 
 ```python
 from bs_roformer import DEFAULT_MODEL
@@ -95,12 +109,17 @@ print(DEFAULT_MODEL)  # "roformer-model-bs-roformer-sw-by-jarredou"
 
 | Model | Category | Description |
 |-------|----------|-------------|
-| **`roformer-model-bs-roformer-sw-by-jarredou`** | 6-stem | **Recommended** - BS-RoFormer SW (vocals, drums, bass, guitar, piano, other) |
+| **`roformer-model-bs-roformer-sw-by-jarredou`** | vocals | **Recommended** - 6-stem separation (vocals, drums, bass, guitar, piano, other) |
 | `roformer-model-bs-roformer-vocals-resurrection-by-unwa` | vocals | Vocals Resurrection by unwa |
 | `roformer-model-bs-roformer-vocals-revive-v3e-by-unwa` | vocals | Vocals Revive V3e by unwa |
+| `roformer-model-bs-roformer-vocals-revive-v2-by-unwa` | vocals | Vocals Revive V2 by unwa |
+| `roformer-model-bs-roformer-vocals-revive-by-unwa` | vocals | Vocals Revive by unwa |
+| `roformer-model-bs-roformer-vocals-by-gabox` | vocals | Vocals by Gabox |
 | `roformer-model-bs-roformer-instrumental-resurrection-by-unwa` | instrumental | Instrumental Resurrection by unwa |
 | `roformer-model-bs-roformer-de-reverb` | dereverb | De-reverberation model |
 | ... | ... | See `--list-models` for full list |
+
+**Categories**: vocals, instrumental, dereverb
 
 ---
 
@@ -117,7 +136,12 @@ for model in MODEL_REGISTRY.list("vocals"):
     print(model.name, model.checkpoint)
 
 # Search models
-results = MODEL_REGISTRY.search("viperx")
+results = MODEL_REGISTRY.search("unwa")
+for m in results:
+    print(m.slug)
+
+# Pretty-print all models
+print(MODEL_REGISTRY.as_table())
 ```
 
 ---
